@@ -2,6 +2,7 @@
 #include<cctype>
 #include<sstream>
 #include "board.h"
+#include "move.h"
 
 
 static char num2piece(int square)
@@ -33,6 +34,21 @@ static int piece2num(char piece)
     }
     return NONE;
 }
+
+static int castlingMask(int sq)
+{
+    switch (sq)
+    {
+    case E1: return ~(WHITE_KINGSIDE | WHITE_QUEENSIDE);
+    case H1: return ~WHITE_KINGSIDE;
+    case A1: return ~WHITE_QUEENSIDE;
+    case E8: return ~(BLACK_KINGSIDE | BLACK_QUEENSIDE);
+    case H8: return ~BLACK_KINGSIDE;
+    case A8: return ~BLACK_QUEENSIDE;
+    default: return ~0;               // all bits set: changes nothing
+    }
+}
+
 
 void Board::clear()
 {
@@ -101,4 +117,78 @@ void Board::loadFEN(const std::string& fen)
         int row = enpassant[1]-'1';
         enPassantSquare = row*WIDTH + col;
     }
+}
+
+
+void Board::makeMove(const Move& m)
+{
+    Undo change;
+    change.captured=squares[m.to];
+    change.castlingRights=castlingRights;
+    change.enPassantSquare=enPassantSquare;
+    change.halfMoveClock=halfMoveClock;
+    change.move=m;
+
+    if(m.enPassant)
+    {
+        //remove the pawn
+        squares[boardPos(rowOf(m.from), columnOf(m.to))]=NONE;
+    }
+
+
+    /* castling rights updation*/
+    castlingRights &= castlingMask(m.from) & castlingMask(m.to); // handles cases when getting captured/moving 
+
+    squares[m.to]=squares[m.from];
+
+    // update halfMoveClock and fullMoveClock
+    if(((change.captured & TYPE_MASK) != NONE) || (squares[m.to] & TYPE_MASK)==PAWN)
+    {
+        //reset counter for the 50move rule
+        halfMoveClock=0;
+    }
+    else{
+        halfMoveClock++;
+    }
+    
+    if(m.promotion) squares[m.to]=(squares[m.to]&COLOR_MASK) | m.promotion; // promotion
+    squares[m.from]=NONE;
+    sideToMove^=COLOR_MASK;
+
+    if((squares[m.to] & COLOR_MASK) == BLACK) fullMoveClock++;
+
+    enPassantSquare=NO_SQUARE;
+    if(((squares[m.to] & TYPE_MASK) == PAWN) && (abs(m.to - m.from) == 2*WIDTH))
+    {
+        enPassantSquare = (m.to + m.from)/2; //unconditionaly mark the en-passant square
+    }
+
+    changeHistory.push_back(change);
+    return;
+}
+
+void Board::unmakeMove()
+{
+    Undo prevChange=changeHistory.back();
+    castlingRights=prevChange.castlingRights;
+    enPassantSquare=prevChange.enPassantSquare;
+    halfMoveClock=prevChange.halfMoveClock;
+    sideToMove^=COLOR_MASK;
+    squares[prevChange.move.from]=squares[prevChange.move.to];
+    if(prevChange.move.promotion) //it was a promotional move
+    {
+        squares[prevChange.move.from] = (squares[prevChange.move.from]&COLOR_MASK) | PAWN;
+    }
+    squares[prevChange.move.to]=prevChange.captured;
+
+    if(prevChange.move.enPassant)
+    {
+        //pawn replacement
+        int pawn=(squares[prevChange.move.from] ^ COLOR_MASK) | PAWN;
+        squares[boardPos(rowOf(prevChange.move.from), columnOf(prevChange.move.to))]=pawn;
+    }
+
+    if((squares[prevChange.move.from] & COLOR_MASK) == BLACK) fullMoveClock--;
+    changeHistory.pop_back();
+    return;
 }

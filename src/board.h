@@ -1,6 +1,16 @@
 #pragma once
 #include<string>
+#include <vector>
 #include "types.h"
+#include "move.h"
+
+struct Undo{
+    Move move;
+    int captured;
+    int castlingRights;
+    int enPassantSquare;
+    int halfMoveClock;
+};
 
 class Board{
 public:
@@ -9,6 +19,9 @@ public:
     void printBoard() const;
     int pieceAt(int sq) const {return squares[sq];}
     int getSidetoMove() const {return sideToMove;}
+    void makeMove(const Move& m);
+    void unmakeMove();
+    int getEnpassantSquare() const {return enPassantSquare;}
 
 private:
     int squares[NUM_SQUARES] = {};
@@ -18,4 +31,6 @@ private:
     /* for the 50 move logic */
     int halfMoveClock = 0;
     int fullMoveClock = 1;
+
+    std::vector<Undo> changeHistory;
 };
