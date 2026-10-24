@@ -1,6 +1,6 @@
 #pragma once
 
-struct move{
+struct Move{
     int from;
     int to;
 };

@@ -31,6 +31,7 @@ enum Square {
 
 constexpr int rowOf(int sq) {return sq/WIDTH;}
 constexpr int columnOf(int sq) {return sq%WIDTH;}
+constexpr int boardPos(int r, int c) {return (r*WIDTH + c);}
 
 
 constexpr int WHITE_KINGSIDE  = 1;
