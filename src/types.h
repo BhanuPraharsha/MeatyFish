@@ -38,3 +38,4 @@ constexpr int WHITE_KINGSIDE  = 1;
 constexpr int WHITE_QUEENSIDE = 2;
 constexpr int BLACK_KINGSIDE  = 4;
 constexpr int BLACK_QUEENSIDE = 8;
+const std::string START_POS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

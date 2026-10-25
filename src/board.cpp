@@ -141,6 +141,31 @@ void Board::makeMove(const Move& m)
 
     squares[m.to]=squares[m.from];
 
+    if(m.castle)
+    {
+        if(m.to == G1)
+        {
+            squares[F1]=squares[H1];
+            squares[H1]=NONE;
+        }
+        else if(m.to == C1)
+        {
+            squares[D1]=squares[A1];
+            squares[A1]=NONE;
+        }
+        else if(m.to == G8)
+        {
+            squares[F8]=squares[H8];
+            squares[H8]=NONE;
+        }
+        else if(m.to == C8)
+        {
+            squares[D8]=squares[A8];
+            squares[A8]=NONE;
+        }
+    }
+
+
     // update halfMoveClock and fullMoveClock
     if(((change.captured & TYPE_MASK) != NONE) || (squares[m.to] & TYPE_MASK)==PAWN)
     {
@@ -189,6 +214,31 @@ void Board::unmakeMove()
     }
 
     if((squares[prevChange.move.from] & COLOR_MASK) == BLACK) fullMoveClock--;
+
+    if(prevChange.move.castle)
+    {
+        if(prevChange.move.to == G1)
+        {
+            squares[H1]=squares[F1];
+            squares[F1]=NONE;
+        }
+        else if(prevChange.move.to == C1)
+        {
+            squares[A1]=squares[D1];
+            squares[D1]=NONE;
+        }
+        else if(prevChange.move.to == G8)
+        {
+            squares[H8]=squares[F8];
+            squares[F8]=NONE;
+        }
+        else if(prevChange.move.to == C8)
+        {
+            squares[A8]=squares[D8];
+            squares[D8]=NONE;
+        }
+    }
+
     changeHistory.pop_back();
     return;
 }

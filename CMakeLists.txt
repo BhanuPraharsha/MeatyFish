@@ -11,8 +11,11 @@ endif()
 
 add_executable(engine
     src/main.cpp
+    src/move.cpp
     src/board.cpp
     src/movegen.cpp
+    src/perft.cpp
+    src/uci.cpp
 )
 
 if(MSVC)

@@ -1,8 +1,5 @@
 #include<iostream>
 #include<vector>
-#include "move.h"
-#include "board.h"
-#include "types.h"
 #include "movegen.h"
 
 struct Dir { int dRow; int dCol; };
@@ -31,6 +28,11 @@ static bool hasPiece(const Board& b, int r, int c, int byColor, int type)
 {
     if(!onBoard(r, c)) return false;
     return ((b.pieceAt(boardPos(r, c)) & COLOR_MASK)==byColor && (b.pieceAt(boardPos(r, c)) & TYPE_MASK)==type);
+}
+
+static bool isEmpty(const Board&b, int sq)
+{
+    return ((b.pieceAt(sq)&TYPE_MASK)==NONE);
 }
 
 static void addPawnMoves(const Board& b, int from, std::vector<Move>&moves)
@@ -105,58 +107,6 @@ static void addMoves(const Board& b, int from, const Dir* dirs, int numDirs, int
 }
 
 
-std::vector<Move> generatePseudoMoves(const Board& b)
-{
-    std::vector<Move> moves;
-    for(int sq=0;sq<NUM_SQUARES;sq++)
-    {
-        int piece=b.pieceAt(sq);
-
-        if(piece==NONE)  continue;
-        if((piece & COLOR_MASK)!=b.getSidetoMove()) continue;
-
-        int pieceType=(piece & TYPE_MASK);
-        const Dir* dirs=nullptr;
-        int numDirs=0, maxSteps=0;
-
-        switch (pieceType)
-        {
-        case QUEEN:
-            dirs=QUEEN_DIRS;
-            numDirs=8;
-            maxSteps=7;
-            break;
-        case ROOK:
-            dirs=ROOK_DIRS;
-            numDirs=4;
-            maxSteps=7;
-            break;
-        case BISHOP:
-            dirs=BISHOP_DIRS;
-            numDirs=4;
-            maxSteps=7;
-            break;
-        case KNIGHT:
-            dirs=KNIGHT_DIRS;
-            numDirs=8;
-            maxSteps=1;
-            break;
-        case KING:
-            dirs=KING_DIRS;
-            numDirs=8;
-            maxSteps=1;
-            break;
-        case PAWN:
-            //call the pawn handler
-            addPawnMoves(b, sq, moves);
-            continue;
-        }
-        addMoves(b, sq, dirs, numDirs, maxSteps, moves);
-    }
-
-    return moves;
-}
-
 static bool attackedByStepper(const Board& b, int r, int c, int byColor, int type, const Dir* dirs, int numDirs)
 {
     for(int j=0;j<numDirs;j++)
@@ -200,4 +150,114 @@ bool isSquareAttacked(const Board& b, int square, int byColor)
         || attackedBySlider (b, r, c, byColor, ROOK,   ROOK_DIRS,   4)
         || attackedBySlider (b, r, c, byColor, BISHOP, BISHOP_DIRS, 4)
         || attackedByPawn   (b, r, c, byColor);
+}
+
+// castling move helper
+static void addCastle(const Board& b, std::vector<Move>& moves, int right, int kingSq, int dir, int enemy)
+{
+    if(!(b.getCastlingRights() & right)) return;
+
+    int numEmpty = (dir == 1) ? 2 : 3; 
+    for(int i=1;i<=numEmpty;i++)
+    {
+        if(!isEmpty(b, kingSq + dir*i)) return;
+    }
+    for(int i=0;i<=2;i++)
+    {
+        if(isSquareAttacked(b, kingSq + dir*i, enemy)) return;
+    }
+
+    Move m({kingSq, kingSq + 2*dir});
+    m.castle=true;
+    moves.push_back(m);
+}
+
+std::vector<Move> generatePseudoMoves(const Board& b)
+{
+    std::vector<Move> moves;
+    for(int sq=0;sq<NUM_SQUARES;sq++)
+    {
+        int piece=b.pieceAt(sq);
+
+        if(piece==NONE)  continue;
+        if((piece & COLOR_MASK)!=b.getSidetoMove()) continue;
+
+        int pieceType=(piece & TYPE_MASK);
+        const Dir* dirs=nullptr;
+        int numDirs=0, maxSteps=0;
+
+        switch (pieceType) {
+        case QUEEN:
+            dirs=QUEEN_DIRS;
+            numDirs=8;
+            maxSteps=7;
+            break;
+        case ROOK:
+            dirs=ROOK_DIRS;
+            numDirs=4;
+            maxSteps=7;
+            break;
+        case BISHOP:
+            dirs=BISHOP_DIRS;
+            numDirs=4;
+            maxSteps=7;
+            break;
+        case KNIGHT:
+            dirs=KNIGHT_DIRS;
+            numDirs=8;
+            maxSteps=1;
+            break;
+        case KING:
+            dirs=KING_DIRS;
+            numDirs=8;
+            maxSteps=1;
+            break;
+        case PAWN:
+            //call the pawn handler
+            addPawnMoves(b, sq, moves);
+            continue;
+        }
+        addMoves(b, sq, dirs, numDirs, maxSteps, moves);
+    }
+    // castling
+    bool white = (b.getSidetoMove() == WHITE);
+    int king = white ? E1 : E8, enemy = white ? BLACK : WHITE;
+    addCastle(b, moves, white ? WHITE_KINGSIDE  : BLACK_KINGSIDE,  king, +1, enemy);
+    addCastle(b, moves, white ? WHITE_QUEENSIDE : BLACK_QUEENSIDE, king, -1, enemy);
+
+    return moves;
+}
+
+std::vector<Move> generateLegalMoves(Board& b)
+{
+    std::vector<Move> legalMoves, moves=generatePseudoMoves(b);
+    int kingSquare=-1;
+    for(int sq=0;sq<NUM_SQUARES;sq++)
+    {
+        if(b.pieceAt(sq) == (KING | b.getSidetoMove()))
+        {
+            kingSquare=sq;
+            break;
+        }
+    }
+
+    int us=b.getSidetoMove();
+
+    for(auto move: moves)
+    {
+        b.makeMove(move);
+        int king=(move.from == kingSquare)? move.to : kingSquare;
+        if(!isSquareAttacked(b, king, us ^ COLOR_MASK)) legalMoves.push_back(move);
+        b.unmakeMove();
+    }
+    return legalMoves;
+}
+
+Move string2move(std::string& s, Board &b)
+{
+    for(Move move : generateLegalMoves(b))
+    {
+        if(move2string(move)==s) return move;
+    }
+    return Move();
 }

@@ -22,6 +22,7 @@ public:
     void makeMove(const Move& m);
     void unmakeMove();
     int getEnpassantSquare() const {return enPassantSquare;}
+    int getCastlingRights() const { return castlingRights; }
 
 private:
     int squares[NUM_SQUARES] = {};

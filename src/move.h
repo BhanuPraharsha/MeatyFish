@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include "types.h"
 
 struct Move{
@@ -9,5 +10,4 @@ struct Move{
     bool enPassant=false;
 };
 
-
-
+std::string move2string(const Move &m);
