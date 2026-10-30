@@ -16,6 +16,8 @@ add_executable(engine
     src/movegen.cpp
     src/perft.cpp
     src/uci.cpp
+    src/search.cpp
+    src/eval.cpp
 )
 
 if(MSVC)

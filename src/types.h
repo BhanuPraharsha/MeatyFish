@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 enum Piece {
     NONE=0,
     QUEEN=1,
@@ -11,6 +12,9 @@ enum Piece {
     BLACK=16
     /* 5 bit numbers*/
 };
+
+constexpr int PIECE_VALUE[] = { 0, 900, 500, 330, 320, 0, 100 };
+
 
 constexpr int TYPE_MASK=0b00111;
 constexpr int COLOR_MASK=0b11000;

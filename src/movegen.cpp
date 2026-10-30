@@ -228,9 +228,8 @@ std::vector<Move> generatePseudoMoves(const Board& b)
     return moves;
 }
 
-std::vector<Move> generateLegalMoves(Board& b)
+int kingSquare(const Board& b)
 {
-    std::vector<Move> legalMoves, moves=generatePseudoMoves(b);
     int kingSquare=-1;
     for(int sq=0;sq<NUM_SQUARES;sq++)
     {
@@ -240,13 +239,21 @@ std::vector<Move> generateLegalMoves(Board& b)
             break;
         }
     }
+    return kingSquare;
+}
+
+std::vector<Move> generateLegalMoves(Board& b)
+{
+    std::vector<Move> legalMoves, moves=generatePseudoMoves(b);
+    int kingSq=-1;
+    kingSq=kingSquare(b);
 
     int us=b.getSidetoMove();
 
     for(auto move: moves)
     {
         b.makeMove(move);
-        int king=(move.from == kingSquare)? move.to : kingSquare;
+        int king=(move.from == kingSq)? move.to : kingSq;
         if(!isSquareAttacked(b, king, us ^ COLOR_MASK)) legalMoves.push_back(move);
         b.unmakeMove();
     }
