@@ -25,6 +25,44 @@ static int scoreMove(const Board &b, const Move &m) //heuristics for move orderi
 }
 
 
+static bool isNoisy(const Move &m, const Board &b)
+{
+    return (((b.pieceAt(m.to) & TYPE_MASK) != NONE) || m.enPassant  || (m.promotion == QUEEN));
+}
+
+
+
+static int quiescenceSearch(int alpha, int beta, Board &b, long long &nodesVis)
+{
+    int baseVal=evaluate(b); //baseline
+    if(baseVal >= beta)
+    {
+        return beta;
+    }
+    alpha=std::max(alpha, baseVal);
+
+    std::vector<Move> moves=generateLegalMoves(b);
+    std::vector<Move> noisyMoves;
+    for(const auto& move: moves)
+    {
+        if(isNoisy(move, b)) noisyMoves.push_back(move);
+    }
+    std::sort(noisyMoves.begin(), noisyMoves.end(), [&](const Move& a, const Move& c){return scoreMove(b, a) > scoreMove(b, c);});
+
+    for(const auto& move: noisyMoves)
+    {
+        b.makeMove(move);
+        nodesVis++;
+        int curr=-quiescenceSearch(-beta, -alpha, b, nodesVis);
+        b.unmakeMove();
+
+        if(curr >= beta) return beta;
+        alpha=std::max(alpha, curr);
+    }
+
+    return alpha;
+}
+
 static int negamax(Board &b, int depth, int distFromRoot, long long &nodesVis)
 {
     if(depth==0) return evaluate(b);
@@ -40,7 +78,7 @@ static int negamax(Board &b, int depth, int distFromRoot, long long &nodesVis)
     }
 
     int best=-9999999;
-    for(auto move : moves)
+    for(const auto& move : moves)
     {
         b.makeMove(move);
         nodesVis++;
@@ -53,7 +91,7 @@ static int negamax(Board &b, int depth, int distFromRoot, long long &nodesVis)
 
 static int alphaBetaPrune(Board &b, int depth, int distFromRoot, int alpha, int beta, long long &nodesVis)
 {
-    if(depth==0) return evaluate(b);
+    if(depth==0) return quiescenceSearch(alpha, beta, b, nodesVis);
     std::vector<Move> moves=generateLegalMoves(b);
     //move ordering
     std::sort(moves.begin(), moves.end(), [&](const Move& a, const Move& c){return scoreMove(b, a) > scoreMove(b, c);});
@@ -67,7 +105,7 @@ static int alphaBetaPrune(Board &b, int depth, int distFromRoot, int alpha, int 
         else return 0; //stalemate
     }
 
-    for(auto move: moves)
+    for(const auto& move: moves)
     {
         b.makeMove(move);
         nodesVis++;
@@ -101,10 +139,10 @@ Move bestMove(Board &b, int depth, long long &nodesVis)
     Move bestMove=moves[0];
     int alpha=-1000000, beta=1000000;
 
-    for(auto move : moves)
+    for(const auto& move : moves)
     {
         b.makeMove(move);
-        int currBest=-alphaBetaPrune(b, depth-1, 0, -beta, -alpha, nodesVis);
+        int currBest=-alphaBetaPrune(b, depth-1, 1, -beta, -alpha, nodesVis);
         b.unmakeMove();
         if(currBest >= beta)
         {
